@@ -1,0 +1,43 @@
+{
+  "scan_timestamp": "2026-05-21T12:00:00Z",
+  "account_id": "000000000000",
+  "region": "us-east-1",
+  "summary": {
+    "total_orphans": 3,
+    "estimated_monthly_waste_usd": 20.1
+  },
+  "findings": [
+    {
+      "resource_id": "vol-123abc",
+      "resource_type": "ebs_volume",
+      "reason": "unattached",
+      "age_days": 21,
+      "estimated_monthly_cost_usd": 8.0,
+      "tags": {
+        "Project": "NimbusKart"
+      },
+      "suggested_action": "delete",
+      "safe_to_auto_delete": false
+    },
+    {
+      "resource_id": "eipalloc-456xyz",
+      "resource_type": "elastic_ip",
+      "reason": "unassociated",
+      "age_days": 14,
+      "estimated_monthly_cost_usd": 3.6,
+      "tags": {},
+      "suggested_action": "release",
+      "safe_to_auto_delete": false
+    },
+    {
+      "resource_id": "i-0abc123",
+      "resource_type": "ec2_instance",
+      "reason": "missing_tags: Owner",
+      "age_days": 0,
+      "estimated_monthly_cost_usd": 8.5,
+      "tags": {},
+      "suggested_action": "add_tags",
+      "safe_to_auto_delete": false
+    }
+  ]
+}
