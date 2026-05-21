@@ -19,7 +19,7 @@ docker run --rm -d \
   -p 4566:4566 \
   -e SERVICES=ec2,s3,iam \
   -e DEFAULT_REGION=us-east-1 \
-  localstack/localstack
+  localstack/localstack:3.8.1
 ```
 
 Create and activate a virtual environment:
