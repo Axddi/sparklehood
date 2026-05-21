@@ -64,7 +64,7 @@ Run the Cost Janitor in dry-run mode:
 python janitor.py --dry-run
 ```
 
-The dry run is expected to exit with code `1` when it finds the intentionally unattached EBS volume. It still writes:
+The dry run is expected to exit with code `2` when it finds the intentionally unattached EBS volume. It still writes:
 
 - `janitor/report.json`
 - `janitor/summary.md`

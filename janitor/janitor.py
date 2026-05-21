@@ -114,7 +114,7 @@ def main():
         handle_deletions(findings, ec2_client)
 
     if findings and not args.delete:
-        sys.exit(1)
+        sys.exit(2)
 
 
 if __name__ == "__main__":
