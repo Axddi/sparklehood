@@ -1,12 +1,31 @@
 from constants import EBS_GP3_PER_GB_MONTH
+from detectors.tags import missing_tag_finding, report_tags
 
 
-def detect_unattached_ebs(ec2_client):
+def volume_age_days(volume, now):
+    created_at = volume.get("CreateTime")
+
+    if not created_at:
+        return 0
+
+    return max((now - created_at).days, 0)
+
+
+def detect_unattached_ebs(ec2_client, now):
     findings = []
 
     response = ec2_client.describe_volumes()
 
     for volume in response["Volumes"]:
+        tags = volume.get("Tags", [])
+        tag_finding = missing_tag_finding(
+            volume["VolumeId"],
+            "ebs_volume",
+            tags
+        )
+
+        if tag_finding:
+            findings.append(tag_finding)
 
         if volume["State"] == "available":
 
@@ -16,12 +35,12 @@ def detect_unattached_ebs(ec2_client):
                 "resource_id": volume["VolumeId"],
                 "resource_type": "ebs_volume",
                 "reason": "unattached",
-                "age_days": 0,
+                "age_days": volume_age_days(volume, now),
                 "estimated_monthly_cost_usd": round(
                     size * EBS_GP3_PER_GB_MONTH,
                     2
                 ),
-                "tags": {},
+                "tags": report_tags(tags),
                 "suggested_action": "delete",
                 "safe_to_auto_delete": False
             })

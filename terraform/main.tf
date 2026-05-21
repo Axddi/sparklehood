@@ -4,10 +4,7 @@ module "network" {
   vpc_cidr            = var.vpc_cidr
   public_subnet_cidrs = var.public_subnet_cidrs
 
-  availability_zones = [
-    "ap-south-1a",
-    "ap-south-1b"
-  ]
+  availability_zones = var.availability_zones
 
   tags = local.common_tags
 }
@@ -100,7 +97,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs_lifecycle" {
 }
 
 resource "aws_ebs_volume" "orphan_volume" {
-  availability_zone = "us-east-1a"
+  availability_zone = var.availability_zones[0]
   size              = 20
 
   tags = merge(local.common_tags, {

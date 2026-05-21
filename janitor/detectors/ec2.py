@@ -1,15 +1,32 @@
 from datetime import datetime, timezone
 
-from detectors.tags import get_missing_tags
-from constants import STOPPED_T3_MICRO_ESTIMATED_MONTHLY
+from constants import STOPPED_INSTANCE_ESTIMATED_MONTHLY
+from detectors.tags import missing_tag_finding, report_tags
+
+
+def stopped_at_from_reason(reason):
+    if not reason or "(" not in reason or ")" not in reason:
+        return None
+
+    raw_timestamp = reason.split("(", 1)[1].split(")", 1)[0]
+
+    for pattern in ("%Y-%m-%d %H:%M:%S %Z", "%Y-%m-%d %H:%M:%S GMT"):
+        try:
+            stopped_at = datetime.strptime(raw_timestamp, pattern)
+            return stopped_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+    return None
 
 
 def detect_stopped_instances(
     ec2_client,
-    threshold_days=14
+    threshold_days=14,
+    now=None
 ):
-
     findings = []
+    now = now or datetime.now(timezone.utc)
 
     response = ec2_client.describe_instances()
 
@@ -18,32 +35,27 @@ def detect_stopped_instances(
     for reservation in reservations:
 
         for instance in reservation["Instances"]:
-            missing_tags = get_missing_tags(
-                instance.get("Tags", [])
+            tags = instance.get("Tags", [])
+            tag_finding = missing_tag_finding(
+                instance["InstanceId"],
+                "ec2_instance",
+                tags
             )
 
-            if missing_tags:
-
-                findings.append({
-                    "resource_id": instance["InstanceId"],
-                    "resource_type": "ec2_instance",
-                    "reason": f"missing_tags: {','.join(missing_tags)}",
-                    "age_days": 0,
-                    "estimated_monthly_cost_usd": 0,
-                    "tags": {},
-                    "suggested_action": "add_tags",
-                    "safe_to_auto_delete": False
-                })
+            if tag_finding:
+                findings.append(tag_finding)
 
             state = instance["State"]["Name"]
 
             if state == "stopped":
+                stopped_at = stopped_at_from_reason(
+                    instance.get("StateTransitionReason")
+                )
 
-                launch_time = instance["LaunchTime"]
+                if not stopped_at:
+                    continue
 
-                age_days = (
-                    datetime.now(timezone.utc) - launch_time
-                ).days
+                age_days = max((now - stopped_at).days, 0)
 
                 if age_days >= threshold_days:
 
@@ -53,8 +65,8 @@ def detect_stopped_instances(
                         "reason": "stopped_too_long",
                         "age_days": age_days,
                         "estimated_monthly_cost_usd":
-                            STOPPED_T3_MICRO_ESTIMATED_MONTHLY,
-                        "tags": {},
+                            STOPPED_INSTANCE_ESTIMATED_MONTHLY,
+                        "tags": report_tags(tags),
                         "suggested_action": "terminate",
                         "safe_to_auto_delete": False
                     })
