@@ -1,12 +1,20 @@
 from constants import REQUIRED_TAGS
 
 
-def has_required_tags(tags):
+def normalize_tags(tags):
 
-    tag_map = {
+    if not tags:
+        return {}
+
+    return {
         tag["Key"]: tag["Value"]
         for tag in tags
-    } if tags else {}
+    }
+
+
+def get_missing_tags(tags):
+
+    tag_map = normalize_tags(tags)
 
     missing = []
 
@@ -15,3 +23,10 @@ def has_required_tags(tags):
             missing.append(required_tag)
 
     return missing
+
+
+def is_protected(tags):
+
+    tag_map = normalize_tags(tags)
+
+    return tag_map.get("Protected") == "true"
