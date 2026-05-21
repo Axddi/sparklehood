@@ -5,18 +5,13 @@ def normalize_tags(tags):
     if not tags:
         return {}
 
-    return {
-        tag["Key"]: tag["Value"]
-        for tag in tags
-    }
+    return {tag["Key"]: tag["Value"] for tag in tags}
 
 
 def get_missing_tags(tags):
     tag_map = normalize_tags(tags)
     return [
-        required_tag
-        for required_tag in REQUIRED_TAGS
-        if required_tag not in tag_map
+        required_tag for required_tag in REQUIRED_TAGS if required_tag not in tag_map
     ]
 
 
@@ -50,5 +45,5 @@ def missing_tag_finding(resource_id, resource_type, tags):
         "estimated_monthly_cost_usd": 0.0,
         "tags": report_tags(tags),
         "suggested_action": "add_tags",
-        "safe_to_auto_delete": False
+        "safe_to_auto_delete": False,
     }

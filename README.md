@@ -2,154 +2,128 @@
 
 ## Overview
 
-This project was built as part of the DevOps Engineer practical assignment for Code & Conscience.
-
-The goal was to simulate a small cloud cost hygiene system for a fictional e-commerce startup called NimbusKart. The startup was facing increasing AWS costs because of orphaned infrastructure resources like unattached EBS volumes, unused Elastic IPs, stopped EC2 instances, and inconsistent tagging.
-
-The repository contains:
-- Terraform code for a small AWS-style staging setup
-- A Python-based "Cost Janitor" tool to detect wasteful resources
-- GitHub Actions workflow for automated checks
-- A short design document describing how the solution could scale into a real multi-cloud setup
-
-The implementation focuses more on safety, maintainability, and reproducibility than adding unnecessary complexity.
-
----
+NimbusKart is a fictional e-commerce company whose AWS bill has grown because old resources are not being cleaned up consistently. This repo builds a local-only version of a cost hygiene workflow: Terraform creates a small staging stack in LocalStack, and a Python Janitor scans that local AWS API for unattached EBS volumes, old stopped EC2 instances, unused Elastic IPs, and missing ownership tags. The goal is not to pretend this is a full FinOps platform; it is a safe, reproducible slice of the workflow I would want before allowing any cleanup automation near a real account.
 
 ## How to run locally
 
-### Clone the repository
-
 ```bash
 git clone <your-repo-url>
-cd nimbuskart-cost-hygiene
+cd sparklehood
 ```
 
----
+Start LocalStack:
 
-### Create a virtual environment
+```bash
+docker run --rm -d \
+  --name localstack \
+  -p 4566:4566 \
+  -e SERVICES=ec2,s3,iam \
+  -e DEFAULT_REGION=us-east-1 \
+  localstack/localstack
+```
+
+Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
-```
-
----
-
-### Activate the environment
-
-#### Git Bash
-
-```bash
 source .venv/Scripts/activate
 ```
 
-#### PowerShell
+PowerShell activation, if you are on Windows:
 
 ```powershell
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 
----
-
-### Install dependencies
+Install Python dependencies:
 
 ```bash
 pip install -r janitor/requirements.txt
 ```
 
----
-
-### Validate Terraform
+Apply the Terraform stack against LocalStack:
 
 ```bash
 cd terraform
-
 terraform init
-
 terraform fmt -check -recursive
-
 terraform validate
+terraform apply -auto-approve
 ```
 
----
-
-### Run tests
+Run the unit tests:
 
 ```bash
 cd ../janitor
-
 python -m pytest tests/test_janitor.py -v
 ```
 
----
-
-### Run the Cost Janitor
+Run the Cost Janitor in dry-run mode:
 
 ```bash
-python janitor.py
+python janitor.py --dry-run
 ```
 
-The script generates:
-- `report.json`
-- `summary.md`
+The dry run is expected to exit with code `1` when it finds the intentionally unattached EBS volume. It still writes:
 
----
+- `janitor/report.json`
+- `janitor/summary.md`
+
+To inspect the report without your shell stopping on the non-zero exit:
+
+```bash
+python janitor.py --dry-run || true
+```
+
+Delete mode is intentionally explicit:
+
+```bash
+python janitor.py --delete
+```
+
+Resources tagged `Protected=true` are skipped even in delete mode.
 
 ## Architecture
 
 ```text
-                Terraform Infrastructure
-                           │
-                           ▼
-                Simulated AWS Environment
-                     (Moto Mocking)
-                           │
-                           ▼
-                    Cost Janitor
-                  Detection Engine
-                           │
-        ┌──────────────────┴──────────────────┐
-        ▼                                     ▼
-   report.json                           summary.md
-                           │
-                           ▼
-                  GitHub Actions CI
+GitHub PR or local shell
+        |
+        v
+Terraform -> LocalStack AWS APIs
+        |       |
+        |       +-- VPC, subnets, security group
+        |       +-- EC2 web instances
+        |       +-- S3 log bucket
+        |       +-- known unattached EBS volume
+        |
+        v
+Python Cost Janitor
+        |
+        +-- EC2/EBS/EIP detectors
+        +-- S3 tag detector
+        +-- protected-resource guard
+        |
+        v
+report.json + summary.md + PR comment
 ```
-
----
 
 ## Decisions & deviations
 
-- Kept SSH CIDR configurable because exposing port 22 to `0.0.0.0/0` would not be a safe production default.
-- Used Moto for testing instead of fully relying on LocalStack because Docker networking was unstable on my Windows setup, and the assignment explicitly allowed SDK-level mocking.
-- Pinned specific boto3/moto versions after running into Python 3.12 compatibility issues during testing.
-- Kept cost estimation logic intentionally simple using static pricing constants because the focus of the assignment was detection and automation flow.
-- Lifecycle configuration for S3 was simplified slightly during local testing due to LocalStack compatibility inconsistencies.
-
----
+- I kept the assignment's default SSH CIDR as `0.0.0.0/0`, but called it out because I would not use that default in production.
+- I use LocalStack as the default runtime endpoint so the project does not need, or accidentally use, a real AWS account.
+- I added S3 tag scanning even though the orphan examples focus mostly on EC2 resources, because the brief says any resource missing required tags should be reported.
+- I estimate stopped EC2 compute waste as `$0.00` because stopped instances do not accrue EC2 compute hours; the finding is still useful because stopped instances often hide attached disks, IPs, and stale ownership.
+- I left destructive cleanup limited to EBS, EIP, and old stopped EC2 findings. Tag-only findings are recommendations, not deletion candidates.
+- I keep generated reports out of git and store stable examples under `samples/`, so running the tool does not dirty the repo.
 
 ## Trade-offs
 
-If I had more time, I would probably extend this in a few areas:
-- Add support for additional AWS resources like snapshots, NAT gateways, and load balancers
-- Store scan history in a database for trend analysis
-- Add Slack or Teams notifications for new findings
-- Build a cleaner provider abstraction layer for future GCP/Azure support
-- Add approval workflows before destructive actions
-- Improve automated test coverage around delete operations
-
-I intentionally avoided overengineering the project and focused on keeping the workflow understandable and reproducible.
-
----
+With one more week, I would add snapshot and NAT gateway detectors, store scan history so trends are visible, and add a small approval queue before delete mode can run in production. I would also split provider access behind a clearer adapter interface before adding GCP or Azure. For this assignment I kept the implementation small enough that a reviewer can read the whole flow and see the safety checks directly.
 
 ## AI usage disclosure
 
-AI tools used:
-- ChatGPT for debugging Terraform/provider issues, reviewing architecture decisions, and refining parts of the CI workflow
-- GitHub Copilot for repetitive boilerplate code
+I used ChatGPT while debugging the LocalStack/Terraform workflow, checking edge cases around protected delete behavior, and tightening the documentation. I also used GitHub Copilot lightly for repetitive Python and YAML scaffolding.
 
-One issue caused by AI-generated suggestions:
-- An earlier recommendation used newer Moto versions that behaved inconsistently on Python 3.12 Windows environments. I debugged the issue manually and switched to stable pinned versions inside a virtual environment.
+One AI suggestion I rejected was treating stopped EC2 instances as if they always had active compute cost. I checked that assumption and changed the report to show stopped instances as a cleanup signal with `$0.00` compute waste, because the real spend is usually attached storage or public IPs.
 
-One section I intentionally worked through manually:
-- The orphan detection/reporting flow and delete safeguards. I wanted to fully understand the detection logic and make sure the generated report matched the required schema exactly.
+The part I worked through most deliberately was delete safety: the Janitor now carries tags into each finding and checks `Protected=true` at deletion time. I wanted that path to be boring and obvious, because a cleanup tool that is clever but unsafe is worse than no cleanup tool.

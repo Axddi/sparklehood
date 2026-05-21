@@ -1,10 +1,10 @@
 {
-  "scan_timestamp": "2026-05-21T12:00:00Z",
+  "scan_timestamp": "2026-05-22T10:00:00Z",
   "account_id": "000000000000",
   "region": "us-east-1",
   "summary": {
-    "total_orphans": 3,
-    "estimated_monthly_waste_usd": 20.1
+    "total_orphans": 4,
+    "estimated_monthly_waste_usd": 5.25
   },
   "findings": [
     {
@@ -12,9 +12,12 @@
       "resource_type": "ebs_volume",
       "reason": "unattached",
       "age_days": 21,
-      "estimated_monthly_cost_usd": 8.0,
+      "estimated_monthly_cost_usd": 1.6,
       "tags": {
-        "Project": "NimbusKart"
+        "Project": "NimbusKart",
+        "Environment": "staging",
+        "Owner": "aaditya",
+        "ManagedBy": "terraform"
       },
       "suggested_action": "delete",
       "safe_to_auto_delete": false
@@ -23,19 +26,41 @@
       "resource_id": "eipalloc-456xyz",
       "resource_type": "elastic_ip",
       "reason": "unassociated",
-      "age_days": 14,
-      "estimated_monthly_cost_usd": 3.6,
-      "tags": {},
+      "age_days": 0,
+      "estimated_monthly_cost_usd": 3.65,
+      "tags": {
+        "Project": "NimbusKart",
+        "Environment": "staging",
+        "Owner": "aaditya"
+      },
       "suggested_action": "release",
       "safe_to_auto_delete": false
     },
     {
       "resource_id": "i-0abc123",
       "resource_type": "ec2_instance",
-      "reason": "missing_tags: Owner",
+      "reason": "stopped_too_long",
+      "age_days": 20,
+      "estimated_monthly_cost_usd": 0.0,
+      "tags": {
+        "Project": "NimbusKart",
+        "Environment": "staging",
+        "Owner": "aaditya"
+      },
+      "suggested_action": "terminate",
+      "safe_to_auto_delete": false
+    },
+    {
+      "resource_id": "untagged-bucket",
+      "resource_type": "s3_bucket",
+      "reason": "missing_tags: Project,Environment,Owner",
       "age_days": 0,
-      "estimated_monthly_cost_usd": 8.5,
-      "tags": {},
+      "estimated_monthly_cost_usd": 0.0,
+      "tags": {
+        "Project": null,
+        "Environment": null,
+        "Owner": null
+      },
       "suggested_action": "add_tags",
       "safe_to_auto_delete": false
     }

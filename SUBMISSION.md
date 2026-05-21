@@ -1,9 +1,9 @@
-# Submission — DevOps Engineer Assignment
+# Submission - DevOps Engineer Assignment
 
 **Candidate name:** Aaditya Saxena  
-**Email:** aaditya.saxena.1357@gmail.com
-**Date submitted:** 2026-05-21  
-**Hours spent (approximate):** Around 8–10 hours  
+**Email:** aaditya.saxena.1357@gmail.com  
+**Date submitted:** 2026-05-22  
+**Hours spent (approximate):** Around 8-10 hours  
 
 ## Deliverables checklist
 
@@ -38,17 +38,17 @@ samples/report.example.json
 
 ## Known limitations
 
-- Cost estimates are static approximations and not connected to live cloud pricing APIs
-- Detection currently focuses only on a small set of AWS resources
-- Moto was used for testing because it was more stable than LocalStack on my Windows setup
-- Historical scan storage and dashboards were intentionally left out to keep the scope manageable
-- Delete mode currently supports only selected resource types
+- Cost estimates are intentionally conservative and static.
+- Stopped EC2 instances are reported as stale resources, but compute waste is shown as `$0.00` because stopped instances do not accrue compute instance-hours.
+- Delete mode supports EBS volumes, Elastic IPs, and stopped EC2 instances; tag-only findings remain recommendations.
+- The Janitor currently scans one configured LocalStack/AWS-compatible endpoint at a time.
+- The walkthrough video is still pending and should be recorded after the final local verification pass.
 
 ---
 
 ## AI usage disclosure
 
-- Used ChatGPT mainly for debugging Terraform/provider issues, reviewing architecture ideas, and improving parts of the CI workflow
-- Used GitHub Copilot occasionally for repetitive boilerplate code
-- One AI suggestion around Moto versions caused compatibility problems on Python 3.12 Windows environments, which I debugged and fixed by pinning stable versions inside a virtual environment
-- The detection flow, reporting logic, and delete safeguards were manually adjusted to make sure the behavior matched the assignment requirements properly
+- Used ChatGPT for debugging the LocalStack/Terraform flow, reviewing safety edge cases, and tightening documentation.
+- Used GitHub Copilot lightly for repetitive Python/YAML scaffolding.
+- One AI suggestion treated stopped EC2 instances as active compute waste; I corrected that because stopped EC2 compute is not billed the same way running compute is.
+- I manually focused on the protected-delete path and report shape because those are the parts I expect an interviewer to ask me to explain.

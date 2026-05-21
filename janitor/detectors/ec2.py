@@ -20,11 +20,7 @@ def stopped_at_from_reason(reason):
     return None
 
 
-def detect_stopped_instances(
-    ec2_client,
-    threshold_days=14,
-    now=None
-):
+def detect_stopped_instances(ec2_client, threshold_days=14, now=None):
     findings = []
     now = now or datetime.now(timezone.utc)
 
@@ -33,13 +29,10 @@ def detect_stopped_instances(
     reservations = response.get("Reservations", [])
 
     for reservation in reservations:
-
-        for instance in reservation["Instances"]:
+        for instance in reservation.get("Instances", []):
             tags = instance.get("Tags", [])
             tag_finding = missing_tag_finding(
-                instance["InstanceId"],
-                "ec2_instance",
-                tags
+                instance["InstanceId"], "ec2_instance", tags
             )
 
             if tag_finding:
@@ -58,17 +51,17 @@ def detect_stopped_instances(
                 age_days = max((now - stopped_at).days, 0)
 
                 if age_days >= threshold_days:
-
-                    findings.append({
-                        "resource_id": instance["InstanceId"],
-                        "resource_type": "ec2_instance",
-                        "reason": "stopped_too_long",
-                        "age_days": age_days,
-                        "estimated_monthly_cost_usd":
-                            STOPPED_INSTANCE_ESTIMATED_MONTHLY,
-                        "tags": report_tags(tags),
-                        "suggested_action": "terminate",
-                        "safe_to_auto_delete": False
-                    })
+                    findings.append(
+                        {
+                            "resource_id": instance["InstanceId"],
+                            "resource_type": "ec2_instance",
+                            "reason": "stopped_too_long",
+                            "age_days": age_days,
+                            "estimated_monthly_cost_usd": STOPPED_INSTANCE_ESTIMATED_MONTHLY,
+                            "tags": report_tags(tags),
+                            "suggested_action": "terminate",
+                            "safe_to_auto_delete": False,
+                        }
+                    )
 
     return findings

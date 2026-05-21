@@ -3,10 +3,7 @@ from datetime import datetime, timezone
 
 
 def build_report(findings, region="us-east-1", account_id="000000000000"):
-    total_waste = sum(
-        finding["estimated_monthly_cost_usd"]
-        for finding in findings
-    )
+    total_waste = sum(finding["estimated_monthly_cost_usd"] for finding in findings)
 
     return {
         "scan_timestamp": datetime.now(timezone.utc)
@@ -17,9 +14,9 @@ def build_report(findings, region="us-east-1", account_id="000000000000"):
         "region": region,
         "summary": {
             "total_orphans": len(findings),
-            "estimated_monthly_waste_usd": round(total_waste, 2)
+            "estimated_monthly_waste_usd": round(total_waste, 2),
         },
-        "findings": findings
+        "findings": findings,
     }
 
 
@@ -37,7 +34,7 @@ def save_markdown_summary(report, filename="summary.md"):
         f"Estimated monthly waste: ${report['summary']['estimated_monthly_waste_usd']}",
         "",
         "## Findings",
-        ""
+        "",
     ]
 
     if not report["findings"]:

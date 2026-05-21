@@ -1,61 +1,30 @@
-# DESIGN.md
+# Design Note
 
-## Multi-cloud approach
+## Multi-cloud Approach
 
-Right now the project only scans AWS-style resources, but if NimbusKart wanted to add GCP or Azure later, I would avoid tightly coupling the detection logic to AWS APIs.
-
-The cleaner approach would be to separate the project into:
-- provider layer
-- detection engine
-- reporting layer
-
-Something like this:
+The current Janitor talks directly to AWS-shaped APIs. Before adding GCP next quarter, I would split it into three layers:
 
 ```text
 providers/
-  aws/
-  gcp/
-  azure/
+  aws.py      -> boto3 calls, AWS tag shape, AWS ids
+  gcp.py      -> Google Cloud clients, labels, project ids
+  azure.py    -> Azure SDK clients, resource groups, tags
 
-detectors/
-reporting/
 core/
+  models.py   -> normalized Resource and Finding objects
+  rules.py    -> unattached disk, idle ip, missing owner, stale compute
+
+reporting/
+  json.py
+  markdown.py
+  notifications.py
 ```
 
-Each provider module would expose a common interface:
-
-```python
-list_instances()
-list_volumes()
-list_unused_ips()
-list_tags()
-```
-
-The detection engine would stay cloud-agnostic and only work with normalized resource objects.
-
-That way, adding GCP support would mostly involve implementing a new provider adapter instead of rewriting the core detection logic.
-
-I would also avoid cloud-specific assumptions in the reporting schema so the same report format could work across providers.
-
----
+Provider modules should return normalized resources such as `Volume`, `ComputeInstance`, `PublicIp`, and `Bucket`. The rule engine should not know whether a disk came from EBS, a GCP persistent disk, or an Azure managed disk. That is the boundary that keeps multi-cloud support from becoming three separate scripts with the same bugs copied around.
 
 ## Permissions
 
-The Janitor should operate in two modes:
-- read-only (`--dry-run`)
-- cleanup (`--delete`)
-
-In dry-run mode, the tool only needs permissions to describe/list resources.
-
-In delete mode, it additionally needs permissions to:
-- delete volumes
-- release Elastic IPs
-- terminate instances
-- remove snapshots (if implemented later)
-
-For production, I would strongly separate these roles instead of giving one role permanent delete access.
-
-### Minimal read-only IAM policy
+Dry-run mode should only list and describe resources. For this implementation, the AWS read-only policy would be:
 
 ```json
 {
@@ -67,7 +36,6 @@ For production, I would strongly separate these roles instead of giving one role
         "ec2:DescribeInstances",
         "ec2:DescribeVolumes",
         "ec2:DescribeAddresses",
-        "ec2:DescribeTags",
         "s3:ListAllMyBuckets",
         "s3:GetBucketTagging"
       ],
@@ -77,84 +45,26 @@ For production, I would strongly separate these roles instead of giving one role
 }
 ```
 
-In a real environment, I would also scope access down to specific accounts, regions, or environments wherever possible.
+Delete mode should be a separate role, not the same role with more permissions left on all the time. It would add `ec2:DeleteVolume`, `ec2:ReleaseAddress`, and `ec2:TerminateInstances`, with tag conditions where AWS supports them. I would also require the automation role to deny deletion when `Protected=true` is present.
 
----
+## Safety Net
 
-## Safety considerations
+Failure mode 1: an unattached EBS volume is actually a rollback or recovery volume. Deleting it immediately could remove the fastest path back from a bad deployment. Guardrails: quarantine first by tagging it, wait through a configurable grace period, notify the owner, and only delete after approval or a second scan confirms it is still orphaned.
 
-One obvious risk with automated cleanup systems is deleting something that looks unused but is actually still important.
-
-### Example 1 — Detached disaster recovery volume
-
-An unattached EBS volume might still contain:
-- database backups
-- forensic data
-- rollback snapshots
-
-Automatically deleting it could permanently remove recovery data.
-
-Guardrails I would add:
-- delayed deletion windows
-- quarantine tags
-- approval workflows
-- notifications before deletion
-
----
-
-### Example 2 — Stopped instances used for deployments
-
-A stopped EC2 instance might belong to:
-- a blue/green deployment setup
-- temporary rollback infrastructure
-- scheduled batch systems
-
-Naively terminating it could break deployments or remove fallback infrastructure.
-
-Guardrails:
-- minimum inactivity thresholds
-- owner approval
-- exclusion tags like `Protected=true`
-- environment-aware rules (production vs staging)
-
-For production systems, I would strongly prefer recommendations + approval instead of immediate deletion.
-
----
+Failure mode 2: a stopped EC2 instance is part of a blue/green deployment, a seasonal worker, or a manual recovery path. Terminating it because it is old could break a release or remove a fallback. Guardrails: require owner and environment tags, skip production unless explicitly enabled, keep `Protected=true` as a hard stop, and make terminate actions approval-based by default.
 
 ## Observability
 
-To understand whether the Janitor is actually helping reduce waste, I would publish a few operational metrics.
-
-| Metric | Purpose | Alert Threshold |
+| Metric | Source | Alert |
 |---|---|---|
-| `orphan_resources_total` | Total detected waste | Sudden spike |
-| `estimated_monthly_waste_usd` | Approximate monthly waste | > predefined budget |
-| `janitor_scan_duration_seconds` | Scan performance | unusually high runtime |
-| `deletion_attempts_total` | Cleanup activity tracking | abnormal spikes |
-| `protected_resources_skipped_total` | Governance visibility | unusual increase |
+| `janitor_findings_total` | report summary | Spike above previous 7-day average by 50% |
+| `janitor_estimated_waste_usd` | report summary | Above team budget threshold |
+| `janitor_protected_skips_total` | delete handler | Any sudden increase after a deploy |
+| `janitor_delete_attempts_total` | delete handler | Any production delete without approval |
+| `janitor_scan_duration_seconds` | wrapper around scan run | Above 2x recent baseline |
 
-I would probably send these metrics to:
-- CloudWatch
-- Prometheus/Grafana
-- Datadog
+I would publish these to the company's existing stack rather than introduce a new one just for this tool. In AWS-only environments that is CloudWatch; in mixed environments I would prefer Prometheus/Grafana or Datadog with cloud/account/resource labels.
 
-depending on the company’s existing stack.
+## What I Did Not Build
 
----
-
-## What I intentionally did not build
-
-There are a few things I intentionally kept out of scope for this assignment.
-
-I did not build:
-- historical storage for scan results
-- Slack/Teams integrations
-- real cloud account integration
-- approval dashboards
-- multi-account orchestration
-- snapshot analysis
-- advanced cost estimation logic
-
-Most of those features are useful in production, but they would have added complexity without improving the core goal of the assignment, which was mainly around safe automation, infrastructure structure, and CI/CD integration.
-
-I focused more on building something understandable, testable, and reproducible rather than trying to simulate a full enterprise FinOps platform.
+I did not build historical storage, Slack approvals, multi-account fan-out, snapshot analysis, or real cloud credentials. Those are useful production features, but they would hide the core assignment behind extra plumbing. The important part here is the local, reproducible path: create resources, detect waste, produce a report, and prove delete mode has guardrails.
