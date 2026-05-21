@@ -1,0 +1,20 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# LocalStack
+.localstack/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
