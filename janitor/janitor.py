@@ -4,7 +4,7 @@ import sys
 
 from detectors.ebs import detect_unattached_ebs
 from detectors.eip import detect_unused_eips
-
+from detectors.ec2 import detect_stopped_instances
 from utils.report import (
     build_report,
     save_json_report,
@@ -38,6 +38,10 @@ def main():
 
     findings.extend(
         detect_unattached_ebs(ec2_client)
+    )
+    
+    findings.extend(
+        detect_stopped_instances(ec2_client)
     )
 
     findings.extend(
