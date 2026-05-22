@@ -22,7 +22,7 @@
 Link:
 https://www.loom.com/share/de9ba22ab89943eab6bd7f6ed1c295f6
 
-Length: 6 minutes
+Length: 6 minutes (can watch in 1.25x)
 
 ---
 
