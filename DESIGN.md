@@ -45,7 +45,45 @@ Dry-run mode should only list and describe resources. For this implementation, t
 }
 ```
 
-Delete mode should be a separate role, not the same role with more permissions left on all the time. It would add `ec2:DeleteVolume`, `ec2:ReleaseAddress`, and `ec2:TerminateInstances`, with tag conditions where AWS supports them. I would also require the automation role to deny deletion when `Protected=true` is present.
+Delete mode should be a separate role, not the same role with more permissions left on all the time. The minimal delete-mode policy adds destructive actions with a tag condition that hard-blocks protected resources:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeAddresses",
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketTagging",
+        "ec2:DeleteVolume",
+        "ec2:ReleaseAddress",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "ec2:DeleteVolume",
+        "ec2:ReleaseAddress",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Protected": "true"
+        }
+      }
+    }
+  ]
+}
+```
+
+The Deny statement is enforced at the IAM layer, so even a bug in the Janitor code cannot delete a protected resource.
 
 ## Safety Net
 

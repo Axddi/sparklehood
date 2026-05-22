@@ -24,12 +24,20 @@ docker run --rm -d \
 
 Create and activate a virtual environment:
 
+**Linux / macOS:**
+
 ```bash
 python -m venv .venv
+source .venv/bin/activate
+```
+
+**Windows (Git Bash):**
+
+```bash
 source .venv/Scripts/activate
 ```
 
-PowerShell activation, if you are on Windows:
+**Windows (PowerShell):**
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
