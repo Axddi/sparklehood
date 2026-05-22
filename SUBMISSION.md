@@ -19,10 +19,10 @@
 
 ## Walkthrough video
 
-Link (Loom / YouTube unlisted / Google Drive):  
-ADD_VIDEO_LINK_HERE
+Link:
+https://www.loom.com/share/de9ba22ab89943eab6bd7f6ed1c295f6
 
-Length: under 5 minutes
+Length: 6 minutes
 
 ---
 
