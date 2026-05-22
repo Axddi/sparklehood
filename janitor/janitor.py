@@ -50,7 +50,7 @@ def handle_deletions(findings, ec2_client):
 
 
 def main():
-    default_endpoint_url = os.getenv("AWS_ENDPOINT_URL", "http://localhost:4566")
+    default_endpoint_url = os.getenv("AWS_ENDPOINT_URL")
 
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group()
