@@ -13,7 +13,7 @@
 - [x] Part B: GitHub Actions workflow runs green on a fresh PR
 - [x] Part B: --delete mode respects Protected=true tag
 - [x] Part C: DESIGN.md is present and within 2 pages
-- [ ] Walkthrough video link below is accessible (unlisted is fine)
+- [x] Walkthrough video link below is accessible
 
 ---
 
